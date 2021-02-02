@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2021, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -785,6 +785,10 @@ function attachBindToListeners( observable, toBindings ) {
  *
  *		button.bind( 'isEnabled' ).to( command, 'isEnabled', ui, 'isVisible',
  *			( isCommandEnabled, isUIVisible ) => isCommandEnabled && isUIVisible );
+ *
+ * Using a custom callback allows processing the value before passing it to the target property:
+ *
+ *		button.bind( 'isEnabled' ).to( command, 'value', value => value === 'heading1' );
  *
  * It is also possible to bind to the same property in an array of observables.
  * To bind a `button` to multiple commands (also `Observables`) so that each and every one of them

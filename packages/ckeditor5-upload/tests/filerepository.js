@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2021, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -178,7 +178,8 @@ describe( 'FileRepository', () => {
 			sinon.assert.calledOnce( consoleWarnStub );
 			sinon.assert.calledWithExactly(
 				consoleWarnStub,
-				sinon.match( /^filerepository-no-upload-adapter/ )
+				sinon.match( /^filerepository-no-upload-adapter/ ),
+				sinon.match.string // Link to the documentation
 			);
 		} );
 

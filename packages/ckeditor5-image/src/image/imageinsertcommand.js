@@ -1,9 +1,11 @@
 /**
- * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2021, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
-import Command from '@ckeditor/ckeditor5-core/src/command';
+import { Command } from 'ckeditor5/src/core';
+import { toArray } from 'ckeditor5/src/utils';
+
 import { insertImage, isImageAllowed } from './utils';
 
 /**
@@ -50,12 +52,8 @@ export default class ImageInsertCommand extends Command {
 	execute( options ) {
 		const model = this.editor.model;
 
-		model.change( writer => {
-			const sources = Array.isArray( options.source ) ? options.source : [ options.source ];
-
-			for ( const src of sources ) {
-				insertImage( writer, model, { src } );
-			}
-		} );
+		for ( const src of toArray( options.source ) ) {
+			insertImage( model, { src } );
+		}
 	}
 }

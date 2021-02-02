@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2021, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -140,6 +140,17 @@ export default class DowncastWriter {
 	 */
 	setSelectionFocus( itemOrPosition, offset ) {
 		this.document.selection._setFocus( itemOrPosition, offset );
+	}
+
+	/**
+	 * Creates a new {@link module:engine/view/documentfragment~DocumentFragment} instance.
+	 *
+	 * @param {module:engine/view/node~Node|Iterable.<module:engine/view/node~Node>} [children]
+	 * A list of nodes to be inserted into the created document fragment.
+	 * @returns {module:engine/view/documentfragment~DocumentFragment} The created document fragment.
+	 */
+	createDocumentFragment( children ) {
+		return new DocumentFragment( this.document, children );
 	}
 
 	/**
@@ -654,15 +665,18 @@ export default class DowncastWriter {
 	 * contains instances that are not {@link module:engine/view/text~Text Texts},
 	 * {@link module:engine/view/attributeelement~AttributeElement AttributeElements},
 	 * {@link module:engine/view/containerelement~ContainerElement ContainerElements},
-	 * {@link module:engine/view/emptyelement~EmptyElement EmptyElements} or
+	 * {@link module:engine/view/emptyelement~EmptyElement EmptyElements},
+	 * {@link module:engine/view/rawelement~RawElement RawElements} or
 	 * {@link module:engine/view/uielement~UIElement UIElements}.
 	 *
 	 * @param {module:engine/view/position~Position} position Insertion position.
 	 * @param {module:engine/view/text~Text|module:engine/view/attributeelement~AttributeElement|
 	 * module:engine/view/containerelement~ContainerElement|module:engine/view/emptyelement~EmptyElement|
-	 * module:engine/view/uielement~UIElement|Iterable.<module:engine/view/text~Text|
+	 * module:engine/view/rawelement~RawElement|module:engine/view/uielement~UIElement|
+	 * Iterable.<module:engine/view/text~Text|
 	 * module:engine/view/attributeelement~AttributeElement|module:engine/view/containerelement~ContainerElement|
-	 * module:engine/view/emptyelement~EmptyElement|module:engine/view/uielement~UIElement>} nodes Node or nodes to insert.
+	 * module:engine/view/emptyelement~EmptyElement|module:engine/view/rawelement~RawElement|
+	 * module:engine/view/uielement~UIElement>} nodes Node or nodes to insert.
 	 * @returns {module:engine/view/range~Range} Range around inserted nodes.
 	 */
 	insert( position, nodes ) {
@@ -962,6 +976,7 @@ export default class DowncastWriter {
 	 *
 	 * @param {String} newName New name for element.
 	 * @param {module:engine/view/containerelement~ContainerElement} viewElement Element to be renamed.
+	 * @returns {module:engine/view/containerelement~ContainerElement} Element created due to rename.
 	 */
 	rename( newName, viewElement ) {
 		const newElement = new ContainerElement( this.document, newName, viewElement.getAttributes() );
@@ -1901,21 +1916,12 @@ function mergeTextNodes( t1, t2 ) {
 	return new Position( t1, nodeBeforeLength );
 }
 
-// Checks if provided nodes are valid to insert. Checks if each node is an instance of
-// {@link module:engine/view/text~Text Text} or {@link module:engine/view/attributeelement~AttributeElement AttributeElement},
-// {@link module:engine/view/containerelement~ContainerElement ContainerElement},
-// {@link module:engine/view/emptyelement~EmptyElement EmptyElement} or
-// {@link module:engine/view/uielement~UIElement UIElement}.
+// Checks if provided nodes are valid to insert.
 //
 // Throws {@link module:utils/ckeditorerror~CKEditorError CKEditorError} `view-writer-insert-invalid-node` when nodes to insert
-// contains instances that are not {@link module:engine/view/text~Text Texts},
-// {@link module:engine/view/emptyelement~EmptyElement EmptyElements},
-// {@link module:engine/view/uielement~UIElement UIElements},
-// {@link module:engine/view/attributeelement~AttributeElement AttributeElements} or
-// {@link module:engine/view/containerelement~ContainerElement ContainerElements}.
+// contains instances that are not supported ones (see error description for valid ones.
 //
-// @param Iterable.<module:engine/view/text~Text|module:engine/view/attributeelement~AttributeElement
-// |module:engine/view/containerelement~ContainerElement> nodes
+// @param Iterable.<module:engine/view/text~Text|module:engine/view/element~Element> nodes
 // @param {Object} errorContext
 function validateNodesToInsert( nodes, errorContext ) {
 	for ( const node of nodes ) {

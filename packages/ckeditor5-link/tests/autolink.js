@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2021, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -212,6 +212,15 @@ describe( 'AutoLink', () => {
 
 			expect( getData( model ) ).to.equal(
 				'<paragraph><$text linkHref="mailto:newsletter@cksource.com">newsletter@cksource.com</$text> []</paragraph>'
+			);
+		} );
+
+		it( 'adds default protocol to link of detected www addresses', () => {
+			editor.config.set( 'link.defaultProtocol', 'http://' );
+			simulateTyping( 'www.cksource.com ' );
+
+			expect( getData( model ) ).to.equal(
+				'<paragraph><$text linkHref="http://www.cksource.com">www.cksource.com</$text> []</paragraph>'
 			);
 		} );
 

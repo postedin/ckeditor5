@@ -95,15 +95,19 @@ This task accepts the following arguments:
 
 * `--skip-api` &ndash; Skips building the API documentation (which takes the majority of the total time).
 * `--skip-snippets` &ndash; Skips building live snippets.
-* `--snippets=snippet-name` &ndash; Snippets to build (accepts glob patterns). If a snippet that you want to build uses another snippet as a source that provides an editor instance, you need to specify both snippets. See examples:
-    - `--snippets=features/*` - all snippets that starts with `features/` in their names will be built,
-    - `--snippets=classic-editor,build-classic-source` - all snippets that contains the specified strings in their names will be built.
+* `--snippets=snippet-name` &ndash; Snippets to build. Accepts glob patterns that are matched against snippet names used in `{@snippet ...}` tags. Examples:
+
+	```
+	--snippets=image         // matches roughly {@snippet *image*}
+	--snippets="features/*"  // matches roughly {@snippet *features/*}
+	--snippets=classic-editor,build-classic-source
+	```
+
+	Note: If a snippet that you want to build uses another snippet as a source that provides an editor instance, you need to specify both snippets (e.g. `--files=features/default-headings,build-classic-source`).
 * `--skip-validation` &ndash; Skips the final link validation.
 * `--watch` &ndash; Runs the documentation generator in a watch mode. It covers guides but it does not cover API docs.
 * `--production` &ndash; Minifies the assets and performs other actions which are unnecessary during CKEditor 5 development.
 * `--verbose` &ndash; Prints out more information.
-
-Note: These arguments must be passed after additional `--`:
 
 ```
 yarn run docs --skip-api
@@ -114,6 +118,28 @@ After building documentation, you can quickly start an HTTP server to serve them
 ```
 yarn run docs:serve
 ```
+
+### Verifying documentation
+
+To verify that all pages in our documentation can be opened without any errors, you do not need to do that manually, page by page. Instead, there is a web crawler that automatically traverses the documentation and it visits all pages that have been found. The crawler opens a headless Chromium browser and logs to the console any error that has been found.
+
+To check pages in the documentation, build it (`yarn run docs`), serve it (`yarn run docs:serve`), and then run the crawler:
+
+```
+yarn run docs:verify
+```
+
+<info-box>
+	By default, the crawler scans `http://fake.ckeditor.com:8080`, so you need to adjust your hosts file first.
+</info-box>
+
+This script collects and opens all links from the documentation, except the API and assets.
+
+The web crawler accepts the following arguments:
+
+* `--url`, `-u` &ndash; The URL to start crawling. This argument is required. Thanks to it you can verify e.g. a deployed documentation.
+* `--depth`, `-d` &ndash; Defines how many nested page levels should be examined. Infinity by default.
+* `--exclude`, `-e` &ndash; A comma-separated string with URL exclusions &ndash; links that match the excluded part are skipped. Nothing is excluded by default.
 
 ## Generating content styles
 

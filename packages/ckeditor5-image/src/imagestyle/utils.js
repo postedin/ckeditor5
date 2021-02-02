@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2021, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,13 +7,8 @@
  * @module image/imagestyle/utils
  */
 
-/* globals console */
-
-import fullWidthIcon from '@ckeditor/ckeditor5-core/theme/icons/object-full-width.svg';
-import leftIcon from '@ckeditor/ckeditor5-core/theme/icons/object-left.svg';
-import centerIcon from '@ckeditor/ckeditor5-core/theme/icons/object-center.svg';
-import rightIcon from '@ckeditor/ckeditor5-core/theme/icons/object-right.svg';
-import { attachLinkToDocumentation } from '@ckeditor/ckeditor5-utils/src/ckeditorerror';
+import { logWarning } from 'ckeditor5/src/utils';
+import { icons } from 'ckeditor5/src/core';
 
 /**
  * Default image styles provided by the plugin that can be referred in the
@@ -37,7 +32,7 @@ const defaultStyles = {
 	full: {
 		name: 'full',
 		title: 'Full size image',
-		icon: fullWidthIcon,
+		icon: icons.objectFullWidth,
 		isDefault: true
 	},
 
@@ -45,7 +40,7 @@ const defaultStyles = {
 	side: {
 		name: 'side',
 		title: 'Side image',
-		icon: rightIcon,
+		icon: icons.objectRight,
 		className: 'image-style-side'
 	},
 
@@ -53,7 +48,7 @@ const defaultStyles = {
 	alignLeft: {
 		name: 'alignLeft',
 		title: 'Left aligned image',
-		icon: leftIcon,
+		icon: icons.objectLeft,
 		className: 'image-style-align-left'
 	},
 
@@ -61,7 +56,7 @@ const defaultStyles = {
 	alignCenter: {
 		name: 'alignCenter',
 		title: 'Centered image',
-		icon: centerIcon,
+		icon: icons.objectCenter,
 		className: 'image-style-align-center'
 	},
 
@@ -69,7 +64,7 @@ const defaultStyles = {
 	alignRight: {
 		name: 'alignRight',
 		title: 'Right aligned image',
-		icon: rightIcon,
+		icon: icons.objectRight,
 		className: 'image-style-align-right'
 	}
 };
@@ -83,10 +78,10 @@ const defaultStyles = {
  * @member {Object.<String, String>}
  */
 const defaultIcons = {
-	full: fullWidthIcon,
-	left: leftIcon,
-	right: rightIcon,
-	center: centerIcon
+	full: icons.objectFullWidth,
+	left: icons.objectLeft,
+	right: icons.objectRight,
+	center: icons.objectCenter
 };
 
 /**
@@ -120,12 +115,9 @@ function _normalizeStyle( style ) {
 			 * There is no such image style of given name.
 			 *
 			 * @error image-style-not-found
-		 	 * @param {String} name Name of a missing style name.
+			 * @param {String} name Name of a missing style name.
 			 */
-			console.warn(
-				attachLinkToDocumentation( 'image-style-not-found' ),
-				{ name: styleName }
-			);
+			logWarning( 'image-style-not-found', { name: styleName } );
 
 			// Normalize the style anyway to prevent errors.
 			style = {

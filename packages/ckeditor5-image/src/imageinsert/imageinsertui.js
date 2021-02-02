@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2021, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,7 +7,7 @@
  * @module image/imageinsert/imageinsertui
  */
 
-import Plugin from '@ckeditor/ckeditor5-core/src/plugin';
+import { Plugin } from 'ckeditor5/src/core';
 import ImageInsertPanelView from './ui/imageinsertpanelview';
 import { prepareIntegrations } from './utils';
 
@@ -113,7 +113,10 @@ export default class ImageInsertUI extends Plugin {
 					insertImageViaUrlForm.label = t( 'Insert image via URL' );
 				}
 			}
-		} );
+		// Note: Use the low priority to make sure the following listener starts working after the
+		// default action of the drop-down is executed (i.e. the panel showed up). Otherwise, the
+		// invisible form/input cannot be focused/selected.
+		}, { priority: 'low' } );
 
 		imageInsertView.delegate( 'submit', 'cancel' ).to( dropdownView );
 		this.delegate( 'cancel' ).to( dropdownView );

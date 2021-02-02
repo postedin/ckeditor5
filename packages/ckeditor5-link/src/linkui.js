@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2021, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -7,22 +7,16 @@
  * @module link/linkui
  */
 
-import Plugin from '@ckeditor/ckeditor5-core/src/plugin';
-import ClickObserver from '@ckeditor/ckeditor5-engine/src/view/observer/clickobserver';
-import { isLinkElement, LINK_KEYSTROKE } from './utils';
+import { Plugin } from 'ckeditor5/src/core';
+import { ClickObserver } from 'ckeditor5/src/engine';
+import { ButtonView, ContextualBalloon, clickOutsideHandler } from 'ckeditor5/src/ui';
 
-import ContextualBalloon from '@ckeditor/ckeditor5-ui/src/panel/balloon/contextualballoon';
-
-import clickOutsideHandler from '@ckeditor/ckeditor5-ui/src/bindings/clickoutsidehandler';
-
-import ButtonView from '@ckeditor/ckeditor5-ui/src/button/buttonview';
 import LinkFormView from './ui/linkformview';
 import LinkActionsView from './ui/linkactionsview';
+import { addLinkProtocolIfApplicable, isLinkElement, LINK_KEYSTROKE } from './utils';
 
 import linkIcon from '../theme/icons/link.svg';
 
-const protocolRegExp = /^((\w+:(\/{2,})?)|(\W))/i;
-const emailRegExp = /[\w-]+@[\w-]+\.+[\w-]+/i;
 const VISUAL_SELECTION_MARKER_NAME = 'link-ui';
 
 /**
@@ -165,7 +159,7 @@ export default class LinkUI extends Plugin {
 		const linkCommand = editor.commands.get( 'link' );
 		const defaultProtocol = editor.config.get( 'link.defaultProtocol' );
 
-		const formView = new LinkFormView( editor.locale, linkCommand, defaultProtocol );
+		const formView = new LinkFormView( editor.locale, linkCommand );
 
 		formView.urlInputView.fieldView.bind( 'value' ).to( linkCommand, 'value' );
 
@@ -176,16 +170,8 @@ export default class LinkUI extends Plugin {
 		// Execute link command after clicking the "Save" button.
 		this.listenTo( formView, 'submit', () => {
 			const { value } = formView.urlInputView.fieldView.element;
-
-			// The regex checks for the protocol syntax ('xxxx://' or 'xxxx:')
-			// or non-word characters at the beginning of the link ('/', '#' etc.).
-			const isProtocolNeeded = !!defaultProtocol && !protocolRegExp.test( value );
-			const isEmail = emailRegExp.test( value );
-
-			const protocol = isEmail ? 'mailto:' : defaultProtocol;
-			const parsedValue = value && isProtocolNeeded ? protocol + value : value;
-
-			editor.execute( 'link', parsedValue, formView.getDecoratorSwitchesState() );
+			const parsedUrl = addLinkProtocolIfApplicable( value, defaultProtocol );
+			editor.execute( 'link', parsedUrl, formView.getDecoratorSwitchesState() );
 			this._closeFormView();
 		} );
 
@@ -219,7 +205,9 @@ export default class LinkUI extends Plugin {
 			// Prevent focusing the search bar in FF, Chrome and Edge. See https://github.com/ckeditor/ckeditor5/issues/4811.
 			cancel();
 
-			this._showUI( true );
+			if ( linkCommand.isEnabled ) {
+				this._showUI( true );
+			}
 		} );
 
 		editor.ui.componentFactory.add( 'link', locale => {
@@ -322,6 +310,8 @@ export default class LinkUI extends Plugin {
 		const editor = this.editor;
 		const linkCommand = editor.commands.get( 'link' );
 
+		this.formView.disableCssTransitions();
+
 		this._balloon.add( {
 			view: this.formView,
 			position: this._getBalloonPositionData()
@@ -331,6 +321,8 @@ export default class LinkUI extends Plugin {
 		if ( this._balloon.visibleView === this.formView ) {
 			this.formView.urlInputView.fieldView.select();
 		}
+
+		this.formView.enableCssTransitions();
 
 		// Make sure that each time the panel shows up, the URL field remains in sync with the value of
 		// the command. If the user typed in the input, then canceled the balloon (`urlInputView.fieldView#value` stays
@@ -668,13 +660,15 @@ export default class LinkUI extends Plugin {
 				writer.updateMarker( VISUAL_SELECTION_MARKER_NAME, { range } );
 			} else {
 				if ( range.start.isAtEnd ) {
-					const focus = model.document.selection.focus;
-					const nextValidRange = getNextValidRange( range, focus, writer );
+					const startPosition = range.start.getLastMatchingPosition(
+						( { item } ) => !model.schema.isContent( item ),
+						{ boundaries: range }
+					);
 
 					writer.addMarker( VISUAL_SELECTION_MARKER_NAME, {
 						usingOperation: false,
 						affectsData: false,
-						range: nextValidRange
+						range: writer.createRange( startPosition, range.end )
 					} );
 				} else {
 					writer.addMarker( VISUAL_SELECTION_MARKER_NAME, {
@@ -710,28 +704,4 @@ export default class LinkUI extends Plugin {
 // @returns {module:engine/view/attributeelement~AttributeElement|null} Link element at the position or null.
 function findLinkElementAncestor( position ) {
 	return position.getAncestors().find( ancestor => isLinkElement( ancestor ) );
-}
-
-// Returns next valid range for the fake visual selection marker.
-//
-// @private
-// @param {module:engine/model/range~Range} range Current range.
-// @param {module:engine/model/position~Position} focus Selection focus.
-// @param {module:engine/model/writer~Writer} writer Writer.
-// @returns {module:engine/model/range~Range} New valid range for the fake visual selection marker.
-function getNextValidRange( range, focus, writer ) {
-	const nextStartPath = [ range.start.path[ 0 ] + 1, 0 ];
-	const nextStartPosition = writer.createPositionFromPath( range.start.root, nextStartPath, 'toNext' );
-	const nextRange = writer.createRange( nextStartPosition, range.end );
-
-	// Block creating a potential next valid range over the current range end.
-	if ( nextRange.start.path[ 0 ] > range.end.path[ 0 ] ) {
-		return writer.createRange( focus );
-	}
-
-	if ( nextStartPosition.isAtStart && nextStartPosition.isAtEnd ) {
-		return getNextValidRange( nextRange, focus, writer );
-	}
-
-	return nextRange;
 }
