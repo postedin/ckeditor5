@@ -12,17 +12,21 @@ import { Plugin } from 'ckeditor5/src/core';
 import { UpcastWriter } from 'ckeditor5/src/engine';
 
 import { Notification } from 'ckeditor5/src/ui';
-import { Clipboard } from 'ckeditor5/src/clipboard';
+import { ClipboardPipeline } from 'ckeditor5/src/clipboard';
 import { FileRepository } from 'ckeditor5/src/upload';
 import { env } from 'ckeditor5/src/utils';
 
-import ImageUploadCommand from '../../src/imageupload/imageuploadcommand';
+import UploadImageCommand from './uploadimagecommand';
 import { fetchLocalImage, isLocalImage } from '../../src/imageupload/utils';
 import { createImageTypeRegExp } from './utils';
 import { getViewImgFromWidget } from '../image/utils';
 
 /**
- * The editing part of the image upload feature. It registers the `'imageUpload'` command.
+ * The editing part of the image upload feature. It registers the `'uploadImage'` command
+ * and `imageUpload` command as an aliased name.
+ *
+ * When an image is uploaded it fires the {@link ~ImageUploadEditing#event:uploadComplete `uploadComplete` event}
+ * that allows adding custom attributes to the {@link module:engine/model/element~Element image element}.
  *
  * @extends module:core/plugin~Plugin
  */
@@ -31,7 +35,7 @@ export default class ImageUploadEditing extends Plugin {
 	 * @inheritDoc
 	 */
 	static get requires() {
-		return [ FileRepository, Notification, Clipboard ];
+		return [ FileRepository, Notification, ClipboardPipeline ];
 	}
 
 	static get pluginName() {
@@ -68,8 +72,11 @@ export default class ImageUploadEditing extends Plugin {
 			allowAttributes: [ 'uploadId', 'uploadStatus' ]
 		} );
 
-		// Register imageUpload command.
-		editor.commands.add( 'imageUpload', new ImageUploadCommand( editor ) );
+		const uploadImageCommand = new UploadImageCommand( editor );
+
+		// Register `uploadImage` command and add `imageUpload` command as an alias for backward compatibility.
+		editor.commands.add( 'uploadImage', uploadImageCommand );
+		editor.commands.add( 'imageUpload', uploadImageCommand );
 
 		// Register upcast converter for uploadId.
 		conversion.for( 'upcast' )
@@ -101,20 +108,22 @@ export default class ImageUploadEditing extends Plugin {
 				return imageTypes.test( file.type );
 			} );
 
-			const ranges = data.targetRanges.map( viewRange => editor.editing.mapper.toModelRange( viewRange ) );
+			if ( !images.length ) {
+				return;
+			}
+
+			evt.stop();
 
 			editor.model.change( writer => {
 				// Set selection to paste target.
-				writer.setSelection( ranges );
-
-				if ( images.length ) {
-					evt.stop();
-
-					// Upload images after the selection has changed in order to ensure the command's state is refreshed.
-					editor.model.enqueueChange( 'default', () => {
-						editor.execute( 'imageUpload', { file: images } );
-					} );
+				if ( data.targetRanges ) {
+					writer.setSelection( data.targetRanges.map( viewRange => editor.editing.mapper.toModelRange( viewRange ) ) );
 				}
+
+				// Upload images after the selection has changed in order to ensure the command's state is refreshed.
+				editor.model.enqueueChange( 'default', () => {
+					editor.execute( 'uploadImage', { file: images } );
+				} );
 			} );
 		} );
 
@@ -122,7 +131,7 @@ export default class ImageUploadEditing extends Plugin {
 		// For every image file, a new file loader is created and a placeholder image is
 		// inserted into the content. Then, those images are uploaded once they appear in the model
 		// (see Document#change listener below).
-		this.listenTo( editor.plugins.get( Clipboard ), 'inputTransformation', ( evt, data ) => {
+		this.listenTo( editor.plugins.get( 'ClipboardPipeline' ), 'inputTransformation', ( evt, data ) => {
 			const fetchableImages = Array.from( editor.editing.view.createRangeIn( data.content ) )
 				.filter( value => isLocalImage( value.item ) && !value.item.getAttribute( 'uploadProcessed' ) )
 				.map( value => { return { promise: fetchLocalImage( value.item ), imageElement: value.item }; } );
@@ -186,6 +195,16 @@ export default class ImageUploadEditing extends Plugin {
 				}
 			}
 		} );
+
+		// Set the default handler for feeding the image element with `src` and `srcset` attributes.
+		this.on( 'uploadComplete', ( evt, { imageElement, data } ) => {
+			const urls = data.urls ? data.urls : data;
+
+			this.editor.model.change( writer => {
+				writer.setAttribute( 'src', urls.default, imageElement );
+				this._parseAndSetSrcsetAttributeOnImage( urls, imageElement, writer );
+			} );
+		}, { priority: 'low' } );
 	}
 
 	/**
@@ -254,8 +273,37 @@ export default class ImageUploadEditing extends Plugin {
 			} )
 			.then( data => {
 				model.enqueueChange( 'transparent', writer => {
-					writer.setAttributes( { uploadStatus: 'complete', src: data.default }, imageElement );
-					this._parseAndSetSrcsetAttributeOnImage( data, imageElement, writer );
+					writer.setAttribute( 'uploadStatus', 'complete', imageElement );
+
+					/**
+					 * An event fired when an image is uploaded. You can hook into this event to provide
+					 * custom attributes to the {@link module:engine/model/element~Element image element} based on the data from
+					 * the server.
+					 *
+					 * 		const imageUploadEditing = editor.plugins.get( 'ImageUploadEditing' );
+					 *
+					 * 		imageUploadEditing.on( 'uploadComplete', ( evt, { data, imageElement } ) => {
+					 * 			editor.model.change( writer => {
+					 * 				writer.setAttribute( 'someAttribute', 'foo', imageElement );
+					 * 			} );
+					 * 		} );
+					 *
+					 * You can also stop the default handler that sets the `src` and `srcset` attributes
+					 * if you want to provide custom values for these attributes.
+					 *
+					 * 		imageUploadEditing.on( 'uploadComplete', ( evt, { data, imageElement } ) => {
+					 * 			evt.stop();
+					 * 		} );
+					 *
+					 * **Note**: This event is fired by the {@link module:image/imageupload/imageuploadediting~ImageUploadEditing} plugin.
+					 *
+					 * @event uploadComplete
+					 * @param {Object} data The `uploadComplete` event data.
+					 * @param {Object} data.data The data coming from the upload adapter.
+					 * @param {module:engine/model/element~Element} data.imageElement The
+					 * model {@link module:engine/model/element~Element image element} that can be customized.
+					 */
+					this.fire( 'uploadComplete', { data, imageElement } );
 				} );
 
 				clean();
@@ -306,7 +354,7 @@ export default class ImageUploadEditing extends Plugin {
 		let maxWidth = 0;
 
 		const srcsetAttribute = Object.keys( data )
-		// Filter out keys that are not integers.
+			// Filter out keys that are not integers.
 			.filter( key => {
 				const width = parseInt( key, 10 );
 

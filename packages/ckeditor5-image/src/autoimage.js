@@ -16,8 +16,10 @@ import { global } from 'ckeditor5/src/utils';
 import { insertImage } from './image/utils';
 
 // Implements the pattern: http(s)://(www.)example.com/path/to/resource.ext?query=params&maybe=too.
-const IMAGE_URL_REGEXP = new RegExp( String( /^(http(s)?:\/\/)?[\w-]+(\.[\w-]+)+[\w._~:/?#[\]@!$&'()*+,;=%-]+/.source +
-	/\.(jpg|jpeg|png|gif|ico|JPG|JPEG|PNG|GIF|ICO)\??[\w._~:/#[\]@!$&'()*+,;=%-]*$/.source ) );
+const IMAGE_URL_REGEXP = new RegExp( String( /^(http(s)?:\/\/)?[\w-]+\.[\w.~:/[\]@!$&'()*+,;=%-]+/.source +
+	/\.(jpg|jpeg|png|gif|ico|webp|JPG|JPEG|PNG|GIF|ICO|WEBP)/.source +
+	/(\?[\w.~:/[\]@!$&'()*+,;=%-]*)?/.source +
+	/(#[\w.~:/[\]@!$&'()*+,;=%-]*)?$/.source ) );
 
 /**
  * The auto-image plugin. It recognizes image links in the pasted content and embeds
@@ -75,7 +77,7 @@ export default class AutoImage extends Plugin {
 		// We need to listen on `Clipboard#inputTransformation` because we need to save positions of selection.
 		// After pasting, the content between those positions will be checked for a URL that could be transformed
 		// into an image.
-		this.listenTo( editor.plugins.get( Clipboard ), 'inputTransformation', () => {
+		this.listenTo( editor.plugins.get( 'ClipboardPipeline' ), 'inputTransformation', () => {
 			const firstRange = modelDocument.selection.getFirstRange();
 
 			const leftLivePosition = LivePosition.fromPosition( firstRange.start );
@@ -142,7 +144,7 @@ export default class AutoImage extends Plugin {
 			// Do nothing if image element cannot be inserted at the current position.
 			// See https://github.com/ckeditor/ckeditor5/issues/2763.
 			// Condition must be checked after timeout - pasting may take place on an element, replacing it. The final position matters.
-			const imageCommand = editor.commands.get( 'imageInsert' );
+			const imageCommand = editor.commands.get( 'insertImage' );
 
 			if ( !imageCommand.isEnabled ) {
 				urlRange.detach();

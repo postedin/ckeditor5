@@ -33,8 +33,22 @@ const dataDiv = document.querySelector( '#data' );
 
 ClassicEditor
 	.create( document.querySelector( '#editor' ), {
-		plugins: [ ArticlePluginSet, Strikethrough, Underline, Table, TableToolbar, PageBreak,
-			TableProperties, TableCellProperties, ImageUpload, CloudServices, EasyImage, PasteFromOffice, FontColor, FontBackgroundColor ],
+		plugins: [
+			ArticlePluginSet,
+			Strikethrough,
+			Underline,
+			Table,
+			TableToolbar,
+			PageBreak,
+			TableProperties,
+			TableCellProperties,
+			ImageUpload,
+			CloudServices,
+			EasyImage,
+			PasteFromOffice,
+			FontColor,
+			FontBackgroundColor
+		],
 		toolbar: [ 'heading', '|', 'bold', 'italic', 'strikethrough', 'underline', 'link',
 			'bulletedList', 'numberedList', 'blockQuote', 'insertTable', 'pageBreak', 'undo', 'redo' ],
 		table: {
@@ -45,7 +59,7 @@ ClassicEditor
 	.then( editor => {
 		window.editor = editor;
 
-		const clipboard = editor.plugins.get( 'Clipboard' );
+		const clipboard = editor.plugins.get( 'ClipboardPipeline' );
 
 		editor.editing.view.document.on( 'paste', ( evt, data ) => {
 			console.clear();
